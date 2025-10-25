@@ -1,0 +1,103 @@
+// =====================================================
+// E-Commerce Catalog using MongoDB Nested Documents
+// =====================================================
+
+const mongoose = require('mongoose');
+
+// Replace with your ByteXL MongoDB connection string
+const MONGO_URL = "mongodb+srv://<username>:<password>@<cluster>.mongodb.net/ecommerceDB";
+
+// Connect to MongoDB
+mongoose.connect(MONGO_URL, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log("? Connected to MongoDB"))
+  .catch(err => console.error("? Connection Error:", err));
+
+// ---------------------------
+// Schema Design
+// ---------------------------
+
+// Nested document: Variants
+const variantSchema = new mongoose.Schema({
+  color: String,
+  size: String,
+  stock: Number
+}, { _id: false }); // _id false prevents auto id creation for each subdoc
+
+// Nested document: Reviews
+const reviewSchema = new mongoose.Schema({
+  user: String,
+  rating: { type: Number, min: 1, max: 5 },
+  comment: String,
+  date: { type: Date, default: Date.now }
+}, { _id: false });
+
+// Main document: Product
+const productSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  category: String,
+  price: Number,
+  brand: String,
+  variants: [variantSchema],   // Nested array of variants
+  reviews: [reviewSchema]      // Nested array of reviews
+});
+
+// Create model
+const Product = mongoose.model("Product", productSchema);
+
+// ---------------------------
+// Example CRUD Operations
+// ---------------------------
+
+async function createProduct() {
+  const product = new Product({
+    name: "Smartphone X",
+    category: "Electronics",
+    price: 59999,
+    brand: "TechNova",
+    variants: [
+      { color: "Black", size: "128GB", stock: 50 },
+      { color: "Silver", size: "256GB", stock: 30 }
+    ],
+    reviews: [
+      { user: "Priya", rating: 5, comment: "Excellent phone!" },
+      { user: "Rohit", rating: 4, comment: "Good performance." }
+    ]
+  });
+
+  await product.save();
+  console.log("? Product Created:\n", product);
+}
+
+async function readProducts() {
+  const products = await Product.find();
+  console.log("?? All Products:\n", products);
+}
+
+async function updateProduct() {
+  const updated = await Product.updateOne(
+    { name: "Smartphone X" },
+    { $push: { reviews: { user: "Aditi", rating: 5, comment: "Loved the camera!" } } }
+  );
+  console.log("?? Product Updated:", updated);
+}
+
+async function deleteProduct() {
+  const deleted = await Product.deleteOne({ name: "Smartphone X" });
+  console.log("??? Product Deleted:", deleted);
+}
+
+// ---------------------------
+// Run All Operations Sequentially
+// ---------------------------
+async function runCatalogDemo() {
+  await createProduct();
+  await readProducts();
+  await updateProduct();
+  await readProducts();
+  await deleteProduct();
+  await readProducts();
+
+  mongoose.connection.close();
+}
+
+runCatalogDemo();
